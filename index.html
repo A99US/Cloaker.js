@@ -7,71 +7,36 @@
     </head>
     <body>
         <div id='top'>
-            <div id='title'>
-                <img src='cloaker.svg' height='100px'>&nbsp;Cloaker
-            </div>
             <div id='mainBox'>
-                <div id='selectFileBox'>
+                <div id='selectFileInputBox'>
                     <p class='step'>Step 1:</p>
-                    <input type='file' id='selectFileElem' hidden/>
-                    <button id='selectFileButton' class='button'>Select File</button>
+                    <input type='file' id='selectFileInputElem' hidden/>
+                    <button id='selectFileInputButton' class='button'>Select File</button>
                 </div>
-                <div id='passwordForm'>
-                    <p class='step' id='passwordTitle'>Step 2: enter password here. Minimum 12 characters, though longer is better.</p>
+                <div id='selectFilePassBox'>
+                    <p class='step' id='passwordTitle'>Step 2: 
+                        <select id="passOpt">
+                            <option value='text'>Input Text</option>
+                            <option value='file'>Input File</option>
+                        </select>
+                    </p>
                     <input type='password' label='Password' id='passwordBox'>
+                    <input type='file' id='selectFilePassElem' hidden/>
+                    <button id='selectFilePassButton' class='button'>Select PassFile</button>
                 </div>
-
                 <div id='buttonsBox'>
                     <input type='file' id='encryptElem' hidden/>
-                    <button id='encryptButton' class='button' hidden>Encrypt</button>
+                    <button id='encryptButton' class='button'>Encrypt</button>
                     <input type='file' id='decryptElem' hidden/>
-                    <button id='decryptButton' class='button' hidden>Decrypt</button>
+                    <button id='decryptButton' class='button'>Decrypt</button>
                 </div>
-
-                <div id='outputBox'></div>
+                <div id='outputBoxInput'></div>
+                <div id='outputBoxOutput'></div>
+                <div id='outputBoxProcess'></div>
                 <a href='' download id='downloadLink'>Download</a>
                 <span id='speed'>Speed: quick</span>
                 <progress id='progressBar' value=0 max=100></progress>
             </div>
-        </div>
-        <div id='bottom'>
-            <p><b>Update April 22, 2022:</b> Cloaker now uses less memory on mobile, works with arbitrarily large files on the desktop version of Chrome, and shows speed statistics. If the page looks wrong or it's not working, please clear your browser cache as you may have some stale CSS and JavaScript. If it's still not working, please open an <a href='https://github.com/spieglt/Cloaker.js/issues'>issue</a>.</p>
-            <h1>FAQ</h1>
-            <p>
-                <b>Q:</b> What is this and why is it here?
-                <br>
-                <b>A:</b> It's an easy way to encrypt a file with a password and decrypt it later. I wrote the <a href='https://cloaker.spiegl.dev/'>desktop version</a> out of frustration that there was no simple, portable, safe way to protect a file with a password. I wanted to make a mobile version but writing apps was a hassle and distributing this as a small static website is much more pleasant than paying Apple $100/year for a developer account and dealing with app stores. This version is interoperable with the desktop version.
-            </p>
-            <p>
-                <b>Q:</b> How do I encrypt multiple files under the same password?
-                <br>
-                <b>A:</b> Put them in a <code>.zip</code> first then encrypt that. <a href='https://support.apple.com/en-us/HT211132'>iOS</a> does this natively, but for Android you'll need a third-party app.
-            </p>
-            <p>
-                <b>Q:</b> What happens to my data?
-                <br>
-                <b>A:</b> Nothing you encrypt or decrypt with Cloaker is sent anywhere. Everything is done on your device, by your browser, with JavaScript and WebAssembly. This page is just static HTML/CSS/JS served by GitHub, so they likely collect some metadata about visits (see their <a href='https://docs.github.com/en/github/site-policy/github-privacy-statement'>privacy policy</a>), but I do not.
-            </p>
-            <p>
-                <b>Q:</b> Did you write the crypto, you fool? Where's the code?
-                <br>
-                <b>A:</b> No, Cloaker just uses the <code>pwhash</code> (Argon2id) and <code>secretstream</code> (XChaCha20Poly1305) APIs from <a href='https://github.com/jedisct1/libsodium.js/'>libsodium.js</a>. Code is <a href='https://github.com/spieglt/Cloaker.js'>here</a>.
-            </p>
-            <p>
-                <b>Q:</b> How large of a file can I encrypt/decrypt?
-                <br>
-                <span id='nonStreamingSpan'>
-                    <b>A:</b> Since you're not using the desktop version of Chrome, it depends on how much RAM is in your device. In browsers without <a href='https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream#browser_compatibility'>FileSystemWritableFileStream</a>, Cloaker has to keep the encrypted or decrypted file in memory in until you save it and navigate away from the page, so it does not work for large files on phones. If you have a computer, you can use <a href='https://cloaker.spiegl.dev/'>the desktop version of Cloaker</a> which is faster, handles arbitrarily large files, and has cross-platform GUI and CLI versions.
-                </span>
-                <span id='streamingSpan'>
-                    <b>A:</b> Since you're using the desktop version of Chrome which has <a href='https://developer.mozilla.org/en-US/docs/Web/API/FileSystemWritableFileStream#browser_compatibility'>FileSystemWritableFileStream</a>, you can encrypt and decrypt arbitrarily large files.
-                </span>
-            </p>
-            <p>
-                <b>Q:</b> How does it encrypt/decrypt in a long-running operation without interrupting the UI?
-                <br>
-                <b>A:</b> <a href='https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API'>Web workers!</a>
-            </p>
         </div>
     </body>
 </html>

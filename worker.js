@@ -21,19 +21,18 @@ let c = {
 
 const hydrate = (sodium) => {
   console.log('sodium initialized in worker');
-  let state, inFile, offset;
+  let state, inFile, offset, ad;
   let legacy = false;
 
+  let ARGON2ALGO = sodium.crypto_pwhash_ALG_ARGON2ID13
+
   const startEncryption = (message) => {
-    let { password, salt } = message.data;
+    let { password, ops, mem, salt } = message.data;
+    ad = message.data.ad;
     inFile = message.data.inFile;
     offset = 0;
 
-    let key = sodium.crypto_pwhash(32, password, salt,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_ALG_ARGON2ID13
-    );
+    let key = sodium.crypto_pwhash(32, password, salt, (ops >>> 0), (mem >>> 0), ARGON2ALGO);
     let res = sodium.crypto_secretstream_xchacha20poly1305_init_push(key);
     state = res.state;
     let header = res.header;
@@ -51,30 +50,27 @@ const hydrate = (sodium) => {
     const response = tag === sodium.crypto_secretstream_xchacha20poly1305_TAG_FINAL
       ? c.FINAL_ENCRYPTION
       : c.ENCRYPTED_CHUNK;
-    const encryptedChunk = sodium.crypto_secretstream_xchacha20poly1305_push(state, chunk, null, tag);
+    const encryptedChunk = sodium.crypto_secretstream_xchacha20poly1305_push(state, chunk, ad, tag);
     const progress = Math.floor((offset/inFile.size)*100);
     postMessage({ response, progress, encryptedChunk, bytesWritten: offset });
   }
 
   const startDecryption = async (message) => {
-    let { password } = message.data;
+    let { password, ops, mem } = message.data;
+    ad = message.data.ad;
     inFile = message.data.inFile;
     let salt, header, key;
     let firstFour = await inFile.slice(0, 4).arrayBuffer();
     firstFour = new Uint8Array(firstFour);
-    if (compareArrays(firstFour, c.SIGNATURE)) {
-      offset = 4; // skip signature
+    if (1 == 1 || compareArrays(firstFour, c.SIGNATURE)) {
+      offset = 0; //4; // skip signature
       salt = await inFile.slice(offset, offset + c.crypto_pwhash_argon2id_SALTBYTES).arrayBuffer();
       salt = new Uint8Array(salt);
       offset += c.crypto_pwhash_argon2id_SALTBYTES;
       header = await inFile.slice(offset, offset + sodium.crypto_secretstream_xchacha20poly1305_HEADERBYTES).arrayBuffer();
       header = new Uint8Array(header);
       offset += sodium.crypto_secretstream_xchacha20poly1305_HEADERBYTES;
-      key = sodium.crypto_pwhash(32, password, salt,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      );
+      key = sodium.crypto_pwhash(32, password, salt, (ops >>> 0), (mem >>> 0), ARGON2ALGO);
     } else {
       legacy = true;
       offset = compareArrays(firstFour, c.LEGACY_SIGNATURE) ? 4 : 0; // skip signature
@@ -98,7 +94,7 @@ const hydrate = (sodium) => {
     let chunk = await inFile.slice(offset, offset + chunkSize).arrayBuffer();
     chunk = new Uint8Array(chunk);
     offset += chunkSize;
-    let res = sodium.crypto_secretstream_xchacha20poly1305_pull(state, chunk);
+    let res = sodium.crypto_secretstream_xchacha20poly1305_pull(state, chunk, ad);
     if (!res) {
       postMessage({ response: c.DECRYPTION_FAILED });
       return;

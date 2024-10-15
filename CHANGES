@@ -1,0 +1,29 @@
+
+ALL CHANGES :
+
+- Upgrade sodium to the latest (0.7.15)
+- Renaming original elements to accomodate edits and new addition. Add more clarity in difference.
+- Smaller button's size.
+- Remove Header and FAQ section. For simple display. (Apologies, Mr. spieglt).
+- Disable signature. Encrypt-Decrypt freely.
+- Enable both Encrypt-Decrypt button. Let user freely choose.
+- Disable password limit on Encrypt. Let user freely choose.
+- Change default base for 'getHumanReadableFileSize', from 1000 to 1024.
+- Change 'output', from stacked to individual. For simplicity.
+- Change some 'output' as an alert / popup. Seems more appropriate.
+- Add passfile option, just like the main app.
+- Add 'async' 'await' keywords where needed. To read passfile, etc.
+- Adding drag-and-drop function for simplicity.
+- Default opslimit to 3 and memlimit to 134217728 (131 MB), just like the main app.
+
+
+
+STILL FAILED :
+
+- Reset selectFile* value everytime it is clicked. Simpler option when file is edited, so don't need to refresh page. Still fail to open the same file.
+
+
+
+TODO :
+
+- Since stdin size is known, add timer / duration. "Completed in xx seconds", or "xx seconds left".

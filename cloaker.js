@@ -2,6 +2,13 @@ import * as c from './constants.js';
 
 let inFile;
 
+let DEF = {
+  str_max_length : 0,
+  ops : 3,
+  mem : 134217728,
+  passOptSelected : "file",
+};
+
 // check for FileSystem API
 let streaming = !!window.showSaveFilePicker;
 // used when streaming
@@ -17,30 +24,137 @@ let writeData;
 let startEncryption;
 let startDecryption;
 
-let selectFileButton = document.getElementById('selectFileButton');
-let selectFileElem = document.getElementById('selectFileElem');
+let selectFileInputBox = document.getElementById('selectFileInputBox');
+let selectFileInputButton = document.getElementById('selectFileInputButton');
+let selectFileInputElem = document.getElementById('selectFileInputElem');
+let selectFilePassBox = document.getElementById('selectFilePassBox');
+let selectFilePassButton = document.getElementById('selectFilePassButton');
+let selectFilePassElem = document.getElementById('selectFilePassElem');
 let encryptButton = document.getElementById('encryptButton');
 let encryptElem = document.getElementById('encryptElem');
 let decryptButton = document.getElementById('decryptButton');
 let decryptElem = document.getElementById('decryptElem');
 let passwordTitle = document.getElementById('passwordTitle');
 let passwordBox = document.getElementById('passwordBox');
-let outputBox = document.getElementById('outputBox');
 let progressBar = document.getElementById('progressBar');
 let speedSpan = document.getElementById('speed');
-let streamingSpan = document.getElementById('streamingSpan');
-let nonStreamingSpan = document.getElementById('nonStreamingSpan');
+
+let passOpt = document.getElementById('passOpt');
+let outputBoxInput = document.getElementById('outputBoxInput');
+let outputBoxOutput = document.getElementById('outputBoxOutput');
+let outputBoxProcess = document.getElementById('outputBoxProcess');
 
 let startTime;
 let progress;
 let speed;
 let progressInterval;
 
-window.onload = () => {
+window.onload = async () => {
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    document.addEventListener(eventName, preventDefaults, false);
+    selectFileInputBox.addEventListener(eventName, preventDefaults, false);
+    selectFilePassBox.addEventListener(eventName, preventDefaults, false);
+  });
+  /*
+  ['dragenter', 'dragover'].forEach(eventName => {
+    selectFileInputBox.classList.add('hover');
+  });
+  ['dragleave', 'drop'].forEach(eventName => {
+    selectFileInputBox.classList.remove('hover');
+  });
+  */
+  function handleDrop(e,TargetElement) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    TargetElement.files = files;
+    TargetElement.dispatchEvent(new Event('change'));
+  }
+  selectFileInputBox.addEventListener('drop', function(e){
+    handleDrop(e,selectFileInputElem);
+  }, false);
+  selectFilePassBox.addEventListener('drop', function(e){
+    handleDrop(e,selectFilePassElem);
+  }, false);
 
-  selectFileButton.onclick = () => selectFileElem.click();
-  selectFileElem.oninput = async () => {
-    inFile = selectFileElem.files[0];
+  passOpt.onchange = _=> {
+    if(passOpt.value == 'text'){
+      passwordBox.style = 'display: unset';
+      selectFilePassButton.style = 'display: none';
+    }
+    else{
+      passwordBox.style = 'display: none';
+      selectFilePassButton.style = 'display: unset';
+    }
+  }
+  passOpt.value = DEF.passOptSelected;
+  passOpt.dispatchEvent(new Event('change'));
+
+  async function fetchPassword(){
+    let password, ad = null, ops = DEF.ops, mem = DEF.mem;
+    if(passOpt.value == 'text'){
+      password = passwordBox.value;
+      if(DEF.str_max_length > 0 && password.length > DEF.str_max_length){
+        alert("Password length cannot be more than "+DEF.str_max_length+" chars!");
+        fail;
+      }
+    }
+    else{
+      if(!selectFilePassElem.files[0]){
+        alert("You didn't select any PassFile!");
+        fail;
+      }
+      let isOnlyNumber = v =>{const regex = /^[0-9]+$/; return regex.test(v);}
+      let isUndefined = v => typeof v === 'undefined';
+      let PassFile = selectFilePassElem.files[0], PassLines;
+      const read = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+      PassLines = (await read(PassFile)).split(/\r?\n/);
+      // Password
+      password = PassLines[0];
+      if(DEF.str_max_length > 0 && password.length > DEF.str_max_length){
+        alert("Password length cannot be more than "+DEF.str_max_length+" chars!");
+        fail;
+      }
+      // Ad Strings
+      if(!isUndefined(PassLines[1])){
+        ad = PassLines[1];
+      }
+      if(DEF.str_max_length > 0 && ad.length > DEF.str_max_length){
+        alert("Ad length cannot be more than "+DEF.str_max_length+" chars!");
+        fail;
+      }
+      // Opslimit
+      if(!isUndefined(PassLines[2]) && isOnlyNumber(PassLines[2])){
+        ops = PassLines[2];
+      }
+      // Memlimit
+      if(!isUndefined(PassLines[3]) && isOnlyNumber(PassLines[3])){
+        mem = PassLines[3];
+      }
+      //console.log("'"+password+"' "+"'"+ad+"' "+"'"+ops+"' "+"'"+mem+"'"); fail;
+    }
+    return { password, ad, ops, mem };
+  }
+
+  selectFileInputButton.onclick = () => {
+    selectFileInputElem.value = "";
+    selectFileInputElem.click();
+  }
+  selectFilePassButton.onclick = () => {
+    selectFileInputElem.value = "";
+    selectFilePassElem.click();
+  }
+  selectFileInputElem.onchange = async () => {
+    inFile = selectFileInputElem.files[0];
+    /*
     let firstFour = await inFile.slice(0, 4).arrayBuffer();
     firstFour = new Uint8Array(firstFour);
     let hasSignature = compareArrays(firstFour, c.SIGNATURE)
@@ -54,13 +168,17 @@ window.onload = () => {
       decryptButton.style = 'display: hidden';
     }
     output(`File to ${decrypting ? "decrypt" : "encrypt"}: ${inFile.name}, size: ${getHumanReadableFileSize(inFile.size)}`);
+    */
+    outputIndi('outputBoxInput',`File to process : <b>${inFile.name}</b>, ${getHumanReadableFileSize(inFile.size)}`);
   }
 
   encryptButton.onclick = async () => {
     if (!inFile) {
-      output('Please select file.');
+      //output('Please select file.');
+      alert('Please select file.');
       return;
     }
+    /*
     // check password
     const password = passwordBox.value;
     if (password.length < 12) {
@@ -74,6 +192,8 @@ window.onload = () => {
       }, 4000);
       return;
     }
+    */
+    const { password, ad, ops, mem } = await fetchPassword();
     // set up file output
     let name = inFile.name + c.EXTENSION;
     if (streaming) {
@@ -88,16 +208,19 @@ window.onload = () => {
       outStream = await outHandle.createWritable();
       name = outFile.name; // use whatever name user picked
     }
-    output(`Output filename: ${name}`);
-    startEncryption(inFile, password);
+    outputIndi('outputBoxOutput',`Encryption Output : <b>${name}</b>`);
+    outputIndi('outputBoxProcess',`Encrypting file . . . (it will take time)`);
+    startEncryption(inFile, password, ad, ops, mem);
   };
 
   decryptButton.onclick = async () => {
     if (!inFile) {
-      output('Please select file.');
+      //output('Please select file.');
+      alert('Please select file.');
       return;
     }
-    const password = passwordBox.value;
+    // const password = passwordBox.value;
+    const { password, ad, ops, mem } = await fetchPassword();
     let name = getDecryptFilename(inFile.name);
     if (streaming) {
       outHandle = await window.showSaveFilePicker({
@@ -107,17 +230,10 @@ window.onload = () => {
       outStream = await outHandle.createWritable();
       name = outFile.name; // use whatever name user picked
     }
-    output(`Output filename: ${name}`);
-    startDecryption(inFile, password);
+    outputIndi('outputBoxOutput',`Decryption Output : <b>${name}</b>`);
+    outputIndi('outputBoxProcess',`Decrypting file . . . (it will take time)`);
+    startDecryption(inFile, password, ad, ops, mem);
   };
-
-  if (streaming) {
-    streamingSpan.style = 'display: unset';
-    nonStreamingSpan.style = 'display: none';
-  } else {
-    streamingSpan.style = 'display: none';
-    nonStreamingSpan.style = 'display: unset';
-  }
 };
 
 let worker = new Worker('./worker.js');
@@ -134,7 +250,7 @@ worker.onmessage = (message) => {
     case c.ENCRYPTED_CHUNK:
       writeData(message.data.encryptedChunk);
       bytesPerSecond = message.data.bytesWritten / ((Date.now() - startTime) / 1000);
-      speed = getHumanReadableFileSize(bytesPerSecond) + '/sec';
+      speed = getHumanReadableFileSize(bytesPerSecond) + ' / sec';
       progress = message.data.progress;
       worker.postMessage({ command: c.ENCRYPT_CHUNK }); // next chunk
       break;
@@ -152,8 +268,7 @@ worker.onmessage = (message) => {
         link.innerText = `Download encrypted file "${name}"`
         link.style = 'display: unset';
       }
-      output(`Encryption of ${name} complete.`);
-      output();
+      outputIndi('outputBoxProcess',`Encryption of <b>${inFile.name}</b> completed.`);
       progressBar.value = message.data.progress;
       clearInterval(progressInterval);
       break;
@@ -164,7 +279,7 @@ worker.onmessage = (message) => {
     case c.DECRYPTED_CHUNK:
       writeData(message.data.decryptedChunk);
       bytesPerSecond = message.data.bytesWritten / ((Date.now() - startTime) / 1000);
-      speed = getHumanReadableFileSize(bytesPerSecond) + '/sec';
+      speed = getHumanReadableFileSize(bytesPerSecond) + ' / sec';
       progress = message.data.progress;
       worker.postMessage({ command: c.DECRYPT_CHUNK });
       break;
@@ -182,38 +297,39 @@ worker.onmessage = (message) => {
         link.innerText = `Download decrypted file "${name}"`
         link.style = 'display: unset';
       }
-      output(`Decryption of ${name} complete.`);
-      output();
+      outputIndi('outputBoxProcess',`Decryption of <b>${inFile.name}</b> completed.`);
       progressBar.value = message.data.progress;
       clearInterval(progressInterval);
       break;
     case c.DECRYPTION_FAILED:
-      output('Incorrect password');
+      // Change from 'Incorrect password' to a broader and vague description
+      // because the failure itself could be from other reasons
+      outputIndi('outputBoxProcess','Decryption failed.');
       clearInterval(progressInterval);
       break;
   }
 };
 
-startEncryption = async (inFile, password) => {
+startEncryption = async (inFile, password, ad, ops, mem) => {
   startTime = Date.now();
   let salt = new Uint8Array(c.crypto_pwhash_argon2id_SALTBYTES);
   window.crypto.getRandomValues(salt);
   if (streaming) {
-    outStream.write(c.SIGNATURE);
+    //outStream.write(c.SIGNATURE);
     outStream.write(salt);
   } else {
-    outBuffers = [new Uint8Array(c.SIGNATURE)];
+    outBuffers = []; // [new Uint8Array(c.SIGNATURE)];
     outBuffers.push(salt);
   }
-  worker.postMessage({ inFile, password, salt, command: c.START_ENCRYPTION });
+  worker.postMessage({ inFile, password, ad, ops, mem, salt, command: c.START_ENCRYPTION });
 }
 
-startDecryption = async (inFile, password) => {
+startDecryption = async (inFile, password, ad, ops, mem) => {
   startTime = Date.now();
   if (!streaming) {
     outBuffers = [];
   }
-  worker.postMessage({ inFile, password, command: c.START_DECRYPTION });
+  worker.postMessage({ inFile, password, ad, ops, mem, command: c.START_DECRYPTION });
 }
 
 writeData = (data) => {
@@ -224,6 +340,27 @@ writeData = (data) => {
   }
 }
 
+const hideProgress = () => {
+  speedSpan.style = 'display: none';
+  progressBar.style = 'display: none';
+}
+
+const outputIndi = (target, msg) => {
+  let targetElem = document.getElementById(target);
+  if (window.getComputedStyle(targetElem).display === 'none') {
+    targetElem.style = 'display: unset';
+  }
+  if(target == "outputBoxOutput")
+    document.getElementById('outputBoxProcess').style = 'display: none';
+  if(target == "outputBoxInput"){
+    hideProgress();
+    document.getElementById('outputBoxProcess').style = 'display: none';
+    document.getElementById('outputBoxOutput').style = 'display: none';
+  }
+  targetElem.innerHTML = msg;
+}
+
+/*
 const output = (msg) => {
   if (window.getComputedStyle(outputBox).display === 'none') {
     outputBox.style = 'display: unset';
@@ -233,6 +370,7 @@ const output = (msg) => {
   outputBox.appendChild(message);
   outputBox.appendChild(document.createElement('br'));
 }
+*/
 
 const launchProgress = () => {
   speedSpan.style = 'display: unset';
@@ -273,16 +411,11 @@ const getDecryptFilename = (filename) => {
   return decryptFilename;
 }
 
-const getHumanReadableFileSize = (size) => {
-  if (size < 1000) {
-    return size.toFixed(0) + ' bytes';
-  } else if (size < 1000000) {
-    return (size/1000).toFixed(2) + 'KB';
-  } else if (size < 1000000000) {
-    return (size/1000000).toFixed(2) + 'MB';
-  } else if (size < 1000000000000) {
-    return (size/1000000000).toFixed(2) + 'GB';
-  } else {
-    return (size/1000000000000).toFixed(2) + 'TB';
+const getHumanReadableFileSize = (size, base=1024) => {
+  let index = 0, units = [ "Bytes", "KB", "MB", "GB", "TB" ];
+  while (size >= base && index < (units.length-1)) {
+    size /= base;
+    index++;
   }
+  return size.toFixed(2) +" "+ units[index];
 }
