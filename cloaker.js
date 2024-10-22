@@ -1,12 +1,13 @@
 import * as c from './constants.js';
 
-let inFile;
+let inFile, passFile, headerFile;
 
 let DEF = {
   str_max_length : 0,
   ops : 3,
   mem : 134217728,
   passOptSelected : "file",
+  headerOptSelected : "file",
 };
 
 // check for FileSystem API
@@ -27,18 +28,24 @@ let startDecryption;
 let selectFileInputBox = document.getElementById('selectFileInputBox');
 let selectFileInputButton = document.getElementById('selectFileInputButton');
 let selectFileInputElem = document.getElementById('selectFileInputElem');
+let selectFileHeaderButton = document.getElementById('selectFileHeaderButton');
+let selectFileHeaderElem = document.getElementById('selectFileHeaderElem');
+let textareaHeader = document.getElementById('textareaHeader');
 let selectFilePassBox = document.getElementById('selectFilePassBox');
 let selectFilePassButton = document.getElementById('selectFilePassButton');
 let selectFilePassElem = document.getElementById('selectFilePassElem');
 let encryptButton = document.getElementById('encryptButton');
 let encryptElem = document.getElementById('encryptElem');
 let decryptButton = document.getElementById('decryptButton');
+let decryptHeaderButton = document.getElementById('decryptHeaderButton');
 let decryptElem = document.getElementById('decryptElem');
 let passwordTitle = document.getElementById('passwordTitle');
 let passwordBox = document.getElementById('passwordBox');
 let progressBar = document.getElementById('progressBar');
 let speedSpan = document.getElementById('speed');
 
+
+let headerOpt = document.getElementById('headerOpt');
 let passOpt = document.getElementById('passOpt');
 let outputBoxInput = document.getElementById('outputBoxInput');
 let outputBoxOutput = document.getElementById('outputBoxOutput');
@@ -80,6 +87,16 @@ window.onload = async () => {
     handleDrop(e,selectFilePassElem);
   }, false);
 
+  headerOpt.onchange = _=> {
+    if(headerOpt.value == 'text'){
+      textareaHeader.style = 'display: unset';
+      selectFileHeaderButton.style = 'display: none';
+    }
+    else{
+      textareaHeader.style = 'display: none';
+      selectFileHeaderButton.style = 'display: unset';
+    }
+  }
   passOpt.onchange = _=> {
     if(passOpt.value == 'text'){
       passwordBox.style = 'display: unset';
@@ -90,6 +107,8 @@ window.onload = async () => {
       selectFilePassButton.style = 'display: unset';
     }
   }
+  headerOpt.value = DEF.headerOptSelected;
+  headerOpt.dispatchEvent(new Event('change'));
   passOpt.value = DEF.passOptSelected;
   passOpt.dispatchEvent(new Event('change'));
 
@@ -103,20 +122,20 @@ window.onload = async () => {
       }
     }
     else{
-      if(!selectFilePassElem.files[0]){
+      if(!passFile){
         alert("You didn't select any PassFile!");
         fail;
       }
       let isOnlyNumber = v =>{const regex = /^[0-9]+$/; return regex.test(v);}
       let isUndefined = v => typeof v === 'undefined';
-      let PassFile = selectFilePassElem.files[0], PassLines;
+      let PassLines;
       const read = (file) => new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (event) => resolve(event.target.result);
         reader.onerror = reject;
         reader.readAsText(file);
       });
-      PassLines = (await read(PassFile)).split(/\r?\n/);
+      PassLines = (await read(passFile)).split(/\r?\n/);
       // Password
       password = PassLines[0];
       if(DEF.str_max_length > 0 && password.length > DEF.str_max_length){
@@ -144,15 +163,25 @@ window.onload = async () => {
     return { password, ad, ops, mem };
   }
 
+  selectFileHeaderButton.onclick = () => {
+    selectFileHeaderElem.value = "";
+    selectFileHeaderElem.click();
+  }
+  selectFileHeaderElem.oninput = async () => {
+    headerFile = selectFileHeaderElem.files[0];
+  }
+  selectFilePassButton.onclick = () => {
+    selectFilePassElem.value = "";
+    selectFilePassElem.click();
+  }
+  selectFilePassElem.oninput = async () => {
+    passFile = selectFilePassElem.files[0];
+  }
   selectFileInputButton.onclick = () => {
     selectFileInputElem.value = "";
     selectFileInputElem.click();
   }
-  selectFilePassButton.onclick = () => {
-    selectFileInputElem.value = "";
-    selectFilePassElem.click();
-  }
-  selectFileInputElem.onchange = async () => {
+  selectFileInputElem.oninput = async () => {
     inFile = selectFileInputElem.files[0];
     /*
     let firstFour = await inFile.slice(0, 4).arrayBuffer();
@@ -210,10 +239,16 @@ window.onload = async () => {
     }
     outputIndi('outputBoxOutput',`Encryption Output : <b>${name}</b>`);
     outputIndi('outputBoxProcess',`Encrypting file . . . (it will take time)`);
-    startEncryption(inFile, password, ad, ops, mem);
+    startEncryption(inFile, headerFile, password, ad, ops, mem);
   };
 
   decryptButton.onclick = async () => {
+    await decryptFunc();
+  };
+  decryptHeaderButton.onclick = async () => {
+    await decryptFunc(true);
+  };
+  async function decryptFunc(header=false){
     if (!inFile) {
       //output('Please select file.');
       alert('Please select file.');
@@ -232,7 +267,7 @@ window.onload = async () => {
     }
     outputIndi('outputBoxOutput',`Decryption Output : <b>${name}</b>`);
     outputIndi('outputBoxProcess',`Decrypting file . . . (it will take time)`);
-    startDecryption(inFile, password, ad, ops, mem);
+    startDecryption(inFile, password, ad, ops, mem, header);
   };
 };
 
@@ -244,10 +279,14 @@ worker.onmessage = (message) => {
   switch (message.data.response) {
     case c.INITIALIZED_ENCRYPTION:
       launchProgress();
+      writeData(message.data.salt);
       writeData(message.data.header);
       worker.postMessage({ command: c.ENCRYPT_CHUNK }); // kick off actual encryption
       break;
     case c.ENCRYPTED_CHUNK:
+      if (message.data.header_len != null) {
+        writeData(message.data.header_len);
+      }
       writeData(message.data.encryptedChunk);
       bytesPerSecond = message.data.bytesWritten / ((Date.now() - startTime) / 1000);
       speed = getHumanReadableFileSize(bytesPerSecond) + ' / sec';
@@ -272,12 +311,18 @@ worker.onmessage = (message) => {
       progressBar.value = message.data.progress;
       clearInterval(progressInterval);
       break;
+    case c.ENCRYPTION_FAILED:
+      outputIndi('outputBoxProcess','Encryption failed : '+message.data.message);
+      clearInterval(progressInterval);
+      break;
     case c.INITIALIZED_DECRYPTION:
       launchProgress();
       worker.postMessage({ command: c.DECRYPT_CHUNK }); // kick off decryption
       break;
     case c.DECRYPTED_CHUNK:
-      writeData(message.data.decryptedChunk);
+      if(message.data.decID > 1){
+        writeData(message.data.decryptedChunk);
+      }
       bytesPerSecond = message.data.bytesWritten / ((Date.now() - startTime) / 1000);
       speed = getHumanReadableFileSize(bytesPerSecond) + ' / sec';
       progress = message.data.progress;
@@ -297,21 +342,25 @@ worker.onmessage = (message) => {
         link.innerText = `Download decrypted file "${name}"`
         link.style = 'display: unset';
       }
-      outputIndi('outputBoxProcess',`Decryption of <b>${inFile.name}</b> completed.`);
-      progressBar.value = message.data.progress;
+      outputIndi('outputBoxProcess', (message.data.headerDec?"Header ":"")+`Decryption of <b>${inFile.name}</b> completed.`);
+      progressBar.value = message.data.headerDec ? 100 : message.data.progress;
       clearInterval(progressInterval);
       break;
     case c.DECRYPTION_FAILED:
       // Change from 'Incorrect password' to a broader and vague description
       // because the failure itself could be from other reasons
-      outputIndi('outputBoxProcess','Decryption failed.');
+      let msg = message.data.message
+                ? " : "+ message.data.message
+                : ".";
+      outputIndi('outputBoxProcess','Decryption failed'+msg);
       clearInterval(progressInterval);
       break;
   }
 };
 
-startEncryption = async (inFile, password, ad, ops, mem) => {
+startEncryption = async (inFile, headerFile, password, ad, ops, mem) => {
   startTime = Date.now();
+  /*
   let salt = new Uint8Array(c.crypto_pwhash_argon2id_SALTBYTES);
   window.crypto.getRandomValues(salt);
   if (streaming) {
@@ -321,15 +370,20 @@ startEncryption = async (inFile, password, ad, ops, mem) => {
     outBuffers = []; // [new Uint8Array(c.SIGNATURE)];
     outBuffers.push(salt);
   }
-  worker.postMessage({ inFile, password, ad, ops, mem, salt, command: c.START_ENCRYPTION });
+  */
+  writeData(new TextEncoder().encode(c.SIG_STRING));
+  let version_number = new Uint8Array(4);
+  new DataView(version_number.buffer).setUint32(0, c.SIG_V_NUMBER, false); // false for big-endian
+  writeData(version_number);
+  worker.postMessage({ inFile, headerFile, password, ad, ops, mem, command: c.START_ENCRYPTION });
 }
 
-startDecryption = async (inFile, password, ad, ops, mem) => {
+startDecryption = async (inFile, password, ad, ops, mem, headerDec) => {
   startTime = Date.now();
   if (!streaming) {
     outBuffers = [];
   }
-  worker.postMessage({ inFile, password, ad, ops, mem, command: c.START_DECRYPTION });
+  worker.postMessage({ inFile, password, ad, ops, mem, headerDec, command: c.START_DECRYPTION });
 }
 
 writeData = (data) => {

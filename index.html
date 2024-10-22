@@ -9,12 +9,23 @@
         <div id='top'>
             <div id='mainBox'>
                 <div id='selectFileInputBox'>
-                    <p class='step'>Step 1:</p>
+                    <p class='step'>Step 1: Select File To Encrypt</p>
                     <input type='file' id='selectFileInputElem' hidden/>
-                    <button id='selectFileInputButton' class='button'>Select File</button>
+                    <button id='selectFileInputButton' class='button'>Select Data File</button>
+                </div>
+                <div id='selectFileHeaderBox'>
+                    <p class='step'>Step 2: Set Its Header Data (Optional) 
+                        <select id="headerOpt" hidden>
+                            <option value='text'>Input Text</option>
+                            <option value='file'>Input File</option>
+                        </select>
+                    </p>
+                    <textarea id="textareaHeader" cols="65" rows="9" hidden></textarea>
+                    <input type='file' id='selectFileHeaderElem' hidden/>
+                    <button id='selectFileHeaderButton' class='button'>Select Header File</button>
                 </div>
                 <div id='selectFilePassBox'>
-                    <p class='step' id='passwordTitle'>Step 2: 
+                    <p class='step' id='passwordTitle'>Step 3: Choose Password 
                         <select id="passOpt">
                             <option value='text'>Input Text</option>
                             <option value='file'>Input File</option>
@@ -28,7 +39,8 @@
                     <input type='file' id='encryptElem' hidden/>
                     <button id='encryptButton' class='button'>Encrypt</button>
                     <input type='file' id='decryptElem' hidden/>
-                    <button id='decryptButton' class='button'>Decrypt</button>
+                    <button id='decryptButton' class='button'>Decrypt Data</button>
+                    <button id='decryptHeaderButton' class='button'>Decrypt Header</button>
                 </div>
                 <div id='outputBoxInput'></div>
                 <div id='outputBoxOutput'></div>

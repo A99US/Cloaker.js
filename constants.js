@@ -3,6 +3,10 @@ export const CHUNKSIZE = 1024 * 512;
 export const LEGACY_CHUNKSIZE = 4096;
 export const SIGNATURE = new Uint8Array([0xC1, 0x0A, 0x6B, 0xED]);
 export const LEGACY_SIGNATURE = new Uint8Array([0xC1, 0x0A, 0x4B, 0xED]);
+export const SIG_STRING = "SIMPL";
+export const SIG_V_TAG = "v2.0.0";
+export const SIG_V_NUMBER = 2024102201;
+export const REPO_URL = "https://github.com/A99US/simple_file_encryption";
 
 export const EXTENSION = '.cloaker';
 export const START_ENCRYPTION = 'startEncryption';
@@ -16,3 +20,4 @@ export const INITIALIZED_DECRYPTION = 'initializedDecryption';
 export const FINAL_ENCRYPTION = 'finalEncryption';
 export const FINAL_DECRYPTION = 'finalDecryption';
 export const DECRYPTION_FAILED = 'decryptionFailed';
+export const ENCRYPTION_FAILED = 'encryptionFailed';
