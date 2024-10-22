@@ -371,6 +371,7 @@ startEncryption = async (inFile, headerFile, password, ad, ops, mem) => {
     outBuffers.push(salt);
   }
   */
+  outBuffers = [];
   writeData(new TextEncoder().encode(c.SIG_STRING));
   let version_number = new Uint8Array(4);
   new DataView(version_number.buffer).setUint32(0, c.SIG_V_NUMBER, false); // false for big-endian
